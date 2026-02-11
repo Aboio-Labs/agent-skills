@@ -22,12 +22,16 @@ Tests must verify real behavior, not mock behavior. Mocks are a means to isolate
 
 **The violation:**
 
-```typescript
+```gleam
 // ❌ BAD: Testing that the mock exists
-test('renders sidebar', () => {
-  render(<Page />);
-  expect(screen.getByTestId('sidebar-mock')).toBeInTheDocument();
-});
+import gleam/option.{None, Some}
+
+pub fn renders_sidebar_test() {
+  let page = Page(sidebar: Some(MockSidebar))
+
+  page.sidebar
+  |> should.be_some
+}
 ```
 
 **Why this is wrong:**
@@ -40,12 +44,16 @@ test('renders sidebar', () => {
 
 **The fix:**
 
-```typescript
+```gleam
 // ✅ GOOD: Test real component or don't mock it
-test('renders sidebar', () => {
-  render(<Page />);  // Don't mock sidebar
-  expect(screen.getByRole('navigation')).toBeInTheDocument();
-});
+pub fn renders_sidebar_test() {
+  let page = render_page()  // Don't mock sidebar
+
+  page
+  |> get_navigation_elements
+  |> list.length
+  |> should.equal(3)
+}
 
 // OR if sidebar must be mocked for isolation:
 // Don't assert on the mock - test Page's behavior with sidebar present
@@ -67,111 +75,119 @@ BEFORE asserting on any mock element:
 
 **The violation:**
 
-```typescript
+```gleam
 // ❌ BAD: destroy() only used in tests
-class Session {
-  async destroy() {
-    // Looks like production API!
-    await this._workspaceManager?.destroyWorkspace(this.id);
-    // ... cleanup
+pub type Session {
+  Session(id: String, workspace_manager: Option(WorkspaceManager))
+}
+
+pub fn destroy(session: Session) -> Result(Nil, String) {
+  // Looks like production API!
+  case session.workspace_manager {
+    Some(manager) -> workspace.destroy_workspace(manager, session.id)
+    None -> Ok(Nil)
   }
 }
 
 // In tests
-afterEach(() => session.destroy());
+// afterEach(() -> session.destroy())
 ```
 
 **Why this is wrong:**
 
-- Production class polluted with test-only code
+- Production type polluted with test-only code
 - Dangerous if accidentally called in production
 - Violates YAGNI and separation of concerns
 - Confuses object lifecycle with entity lifecycle
 
 **The fix:**
 
-```typescript
+```gleam
 // ✅ GOOD: Test utilities handle test cleanup
 // Session has no destroy() - it's stateless in production
 
-// In test-utils/
-export async function cleanupSession(session: Session) {
-  const workspace = session.getWorkspaceInfo();
-  if (workspace) {
-    await workspaceManager.destroyWorkspace(workspace.id);
+// In test/test_utils.gleam
+pub fn cleanup_session(session: Session) -> Result(Nil, String) {
+  case session.workspace_manager {
+    Some(manager) -> workspace.destroy_workspace(manager, session.id)
+    None -> Ok(Nil)
   }
 }
 
 // In tests
-afterEach(() => cleanupSession(session));
+// afterEach(() -> test_utils.cleanup_session(session))
 ```
 
 ### Gate Function
 
 ```
-BEFORE adding any method to production class:
+BEFORE adding any function to production module:
   Ask: "Is this only used by tests?"
 
   IF yes:
     STOP - Don't add it
     Put it in test utilities instead
 
-  Ask: "Does this class own this resource's lifecycle?"
+  Ask: "Does this module own this resource's lifecycle?"
 
   IF no:
-    STOP - Wrong class for this method
+    STOP - Wrong module for this function
 ```
 
 ## Anti-Pattern 3: Mocking Without Understanding
 
 **The violation:**
 
-```typescript
+```gleam
 // ❌ BAD: Mock breaks test logic
-test("detects duplicate server", () => {
+pub fn detects_duplicate_server_test() {
   // Mock prevents config write that test depends on!
-  vi.mock("ToolCatalog", () => ({
-    discoverAndCacheTools: vi.fn().mockResolvedValue(undefined),
-  }));
+  let mock_catalog = fn(_) { Ok(Nil) }
 
-  await addServer(config);
-  await addServer(config); // Should throw - but won't!
-});
+  add_server(config, mock_catalog)
+  |> should.be_ok
+
+  add_server(config, mock_catalog)  // Should error - but won't!
+  |> should.be_ok
+}
 ```
 
 **Why this is wrong:**
 
-- Mocked method had side effect test depended on (writing config)
+- Mocked function had side effect test depended on (writing config)
 - Over-mocking to "be safe" breaks actual behavior
 - Test passes for wrong reason or fails mysteriously
 
 **The fix:**
 
-```typescript
+```gleam
 // ✅ GOOD: Mock at correct level
-test("detects duplicate server", () => {
+pub fn detects_duplicate_server_test() {
   // Mock the slow part, preserve behavior test needs
-  vi.mock("MCPServerManager"); // Just mock slow server startup
+  let mock_server_startup = fn(_) { Ok(Nil) }
 
-  await addServer(config); // Config written
-  await addServer(config); // Duplicate detected ✓
-});
+  add_server(config)  // Config written
+  |> should.be_ok
+
+  add_server(config)  // Duplicate detected ✓
+  |> should.be_error
+}
 ```
 
 ### Gate Function
 
 ```
-BEFORE mocking any method:
+BEFORE mocking any function:
   STOP - Don't mock yet
 
-  1. Ask: "What side effects does the real method have?"
+  1. Ask: "What side effects does the real function have?"
   2. Ask: "Does this test depend on any of those side effects?"
   3. Ask: "Do I fully understand what this test needs?"
 
   IF depends on side effects:
     Mock at lower level (the actual slow/external operation)
     OR use test doubles that preserve necessary behavior
-    NOT the high-level method the test depends on
+    NOT the high-level function the test depends on
 
   IF unsure what test depends on:
     Run test with real implementation FIRST
@@ -188,15 +204,21 @@ BEFORE mocking any method:
 
 **The violation:**
 
-```typescript
+```gleam
 // ❌ BAD: Partial mock - only fields you think you need
-const mockResponse = {
-  status: "success",
-  data: { userId: "123", name: "Alice" },
-  // Missing: metadata that downstream code uses
-};
+pub type MockResponse {
+  MockResponse(
+    status: String,
+    data: UserData,
+    // Missing: metadata that downstream code uses
+  )
+}
 
-// Later: breaks when code accesses response.metadata.requestId
+pub type UserData {
+  UserData(user_id: String, name: String)
+}
+
+// Later: breaks when code accesses response.metadata.request_id
 ```
 
 **Why this is wrong:**
@@ -210,14 +232,19 @@ const mockResponse = {
 
 **The fix:**
 
-```typescript
+```gleam
 // ✅ GOOD: Mirror real API completeness
-const mockResponse = {
-  status: "success",
-  data: { userId: "123", name: "Alice" },
-  metadata: { requestId: "req-789", timestamp: 1234567890 },
-  // All fields real API returns
-};
+pub type ApiResponse {
+  ApiResponse(
+    status: String,
+    data: UserData,
+    metadata: Metadata,  // All fields real API returns
+  )
+}
+
+pub type Metadata {
+  Metadata(request_id: String, timestamp: Int)
+}
 ```
 
 ### Gate Function
@@ -270,7 +297,7 @@ TDD cycle:
 
 - Mock setup longer than test logic
 - Mocking everything to make test pass
-- Mocks missing methods real components have
+- Mocks missing fields real types have
 - Test breaks when mock changes
 
 **your human partner's question:** "Do we need to be using a mock here?"
@@ -301,8 +328,8 @@ TDD cycle:
 
 ## Red Flags
 
-- Assertion checks for `*-mock` test IDs
-- Methods only called in test files
+- Assertion checks for mock-specific fields
+- Functions only called in test files
 - Mock setup is >50% of test
 - Test fails when you remove mock
 - Can't explain why mock is needed

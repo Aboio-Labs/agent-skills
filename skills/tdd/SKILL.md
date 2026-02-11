@@ -76,38 +76,36 @@ digraph tdd_cycle {
 Write one minimal test showing what should happen.
 
 <Good>
-```typescript
-test('retries failed operations 3 times', async () => {
-  let attempts = 0;
-  const operation = () => {
-    attempts++;
-    if (attempts < 3) throw new Error('fail');
-    return 'success';
-  };
+```gleam
+import gleeunit/should
+import myapp/retry
 
-const result = await retryOperation(operation);
+pub fn retries_failed_operations_3_times_test() {
+  let operation = fn(state) {
+    let attempts = state + 1
+    case attempts < 3 {
+      True -> Error(#(attempts, "fail"))
+      False -> Ok(#(attempts, "success"))
+    }
+  }
 
-expect(result).toBe('success');
-expect(attempts).toBe(3);
-});
-
-````
+  retry.retry_operation(operation, 0)
+  |> should.be_ok
+  |> should.equal(#(3, "success"))
+}
+```
 Clear name, tests real behavior, one thing
 </Good>
 
 <Bad>
-```typescript
-test('retry works', async () => {
-  const mock = jest.fn()
-    .mockRejectedValueOnce(new Error())
-    .mockRejectedValueOnce(new Error())
-    .mockResolvedValueOnce('success');
-  await retryOperation(mock);
-  expect(mock).toHaveBeenCalledTimes(3);
-});
-````
-
-Vague name, tests mock not code
+```gleam
+pub fn retry_works_test() {
+  // Vague name
+  retry.retry_operation(some_mock_fn, 0)
+  |> should.be_ok
+}
+```
+Vague name, doesn't show what behavior is tested
 </Bad>
 
 **Requirements:**
@@ -121,7 +119,7 @@ Vague name, tests mock not code
 **MANDATORY. Never skip.**
 
 ```bash
-npm test path/to/test.test.ts
+gleam test
 ```
 
 Confirm:
@@ -139,32 +137,39 @@ Confirm:
 Write simplest code to pass the test.
 
 <Good>
-```typescript
-async function retryOperation<T>(fn: () => Promise<T>): Promise<T> {
-  for (let i = 0; i < 3; i++) {
-    try {
-      return await fn();
-    } catch (e) {
-      if (i === 2) throw e;
-    }
+```gleam
+pub fn retry_operation(
+  operation: fn(a) -> Result(#(a, b), #(a, String)),
+  initial_state: a,
+) -> Result(#(a, b), #(a, String)) {
+  do_retry(operation, initial_state, 0)
+}
+
+fn do_retry(
+  operation: fn(a) -> Result(#(a, b), #(a, String)),
+  state: a,
+  attempt: Int,
+) -> Result(#(a, b), #(a, String)) {
+  case operation(state) {
+    Ok(result) -> Ok(result)
+    Error(#(new_state, _)) if attempt < 2 ->
+      do_retry(operation, new_state, attempt + 1)
+    Error(e) -> Error(e)
   }
-  throw new Error('unreachable');
 }
 ```
 Just enough to pass
 </Good>
 
 <Bad>
-```typescript
-async function retryOperation<T>(
-  fn: () => Promise<T>,
-  options?: {
-    maxRetries?: number;
-    backoff?: 'linear' | 'exponential';
-    onRetry?: (attempt: number) => void;
-  }
-): Promise<T> {
-  // YAGNI
+```gleam
+pub fn retry_operation(
+  operation: fn(a) -> Result(#(a, b), #(a, String)),
+  initial_state: a,
+  options: RetryOptions,  // YAGNI
+) -> Result(#(a, b), #(a, String)) {
+  // Configurable max retries, backoff strategies, callbacks...
+  // Over-engineered
 }
 ```
 Over-engineered
@@ -177,7 +182,7 @@ Don't add features, refactor other code, or "improve" beyond the test.
 **MANDATORY.**
 
 ```bash
-npm test path/to/test.test.ts
+gleam test
 ```
 
 Confirm:
@@ -206,11 +211,11 @@ Next failing test for next feature.
 
 ## Good Tests
 
-| Quality          | Good                                | Bad                                                 |
-| ---------------- | ----------------------------------- | --------------------------------------------------- |
-| **Minimal**      | One thing. "and" in name? Split it. | `test('validates email and domain and whitespace')` |
-| **Clear**        | Name describes behavior             | `test('test1')`                                     |
-| **Shows intent** | Demonstrates desired API            | Obscures what code should do                        |
+| Quality          | Good                                         | Bad                                                   |
+| ---------------- | -------------------------------------------- | ----------------------------------------------------- |
+| **Minimal**      | One thing. "and" in name? Split it.          | `pub fn validates_email_and_domain_and_whitespace()` |
+| **Clear**        | Name describes behavior                      | `pub fn test1_test()`                                 |
+| **Shows intent** | Demonstrates desired API                     | Obscures what code should do                          |
 
 ## Why Order Matters
 
@@ -306,35 +311,42 @@ Tests-first force edge case discovery before implementing. Tests-after verify yo
 
 **RED**
 
-```typescript
-test("rejects empty email", async () => {
-  const result = await submitForm({ email: "" });
-  expect(result.error).toBe("Email required");
-});
+```gleam
+import gleeunit/should
+import myapp/form
+
+pub fn rejects_empty_email_test() {
+  form.submit_form(FormData(email: ""))
+  |> should.be_error
+}
 ```
 
 **Verify RED**
 
 ```bash
-$ npm test
-FAIL: expected 'Email required', got undefined
+$ gleam test
+FAIL: Expected Error, got Ok(...)
 ```
 
 **GREEN**
 
-```typescript
-function submitForm(data: FormData) {
-  if (!data.email?.trim()) {
-    return { error: "Email required" };
+```gleam
+pub type FormData {
+  FormData(email: String)
+}
+
+pub fn submit_form(data: FormData) -> Result(Nil, String) {
+  case string.trim(data.email) {
+    "" -> Error("Email required")
+    _ -> Ok(Nil)
   }
-  // ...
 }
 ```
 
 **Verify GREEN**
 
 ```bash
-$ npm test
+$ gleam test
 PASS
 ```
 
@@ -373,7 +385,7 @@ Never fix bugs without a test.
 
 ## Testing Anti-Patterns
 
-When adding mocks or test utilities, read @testing-anti-patterns.md to avoid common pitfalls:
+When adding mocks or test utilities, read `testing-anti-patterns.md` to avoid common pitfalls:
 
 - Testing mock behavior instead of real behavior
 - Adding test-only methods to production classes
