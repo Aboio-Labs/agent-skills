@@ -70,18 +70,20 @@ The LSP server is configured with:
 
 ## Installation in Claude Code
 
-Install this plugin from the Aboio marketplace:
+### Option 1: Via Claude Code UI
 
-```bash
-claude plugin install gleam-lsp@aboio-agent-skills
-```
+1. In Claude Code, run `/plugin install`
+2. Search for "aboio" or "gleam-lsp"
+3. Select `gleam-lsp` from the Aboio marketplace
+4. Install
 
-Or add the Aboio marketplace and install:
+### Option 2: Add Marketplace Manually
 
-```bash
-claude marketplace add https://github.com/aboio/agent-skills
-claude plugin install gleam-lsp
-```
+1. Add the Aboio marketplace to your Claude Code settings:
+   - Repository: `https://github.com/Aboio-Labs/agent-skills`
+   - Or: `git@github.com:Aboio-Labs/agent-skills.git`
+
+2. Then install the plugin via `/plugin install` and search for "gleam-lsp"
 
 ## Usage in Claude Code
 
