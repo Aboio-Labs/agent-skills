@@ -25,6 +25,12 @@
       "description": "Senior observability engineer specializing in Gleam/Erlang/OTP logging. Finds unlogged error branches.",
       "path": "skills/observability-logging-expert",
       "tags": ["gleam", "logging", "observability", "wisp"]
+    },
+    {
+      "name": "tdd",
+      "description": "Test-Driven Development. Write failing test first, then implement. RED → GREEN → REFACTOR cycle.",
+      "path": "skills/tdd",
+      "tags": ["testing", "tdd", "gleam", "quality"]
     }
   ],
   "plugins": [
