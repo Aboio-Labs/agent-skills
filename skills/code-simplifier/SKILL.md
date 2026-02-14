@@ -2,12 +2,14 @@
 name: code-simplifier
 description: |
   Expert Gleam code simplification specialist. Refines recently modified code for clarity, consistency, and maintainability without changing behavior.
-
   Use when:
   - Code has just been written with nested cases or inline patterns
   - After refactoring sessions that accumulate intermediate bindings
   - User explicitly requests code cleanup or simplification
   - New feature implementation produces verbose handler code
+model: sonnet
+memory: project
+color: green
 ---
 
 # Code Simplifier
@@ -221,12 +223,14 @@ fn validate_user_access(user: User) -> Result(Page, String) {
 ```
 
 **Detection criteria:**
+
 - Outer `case` matches on Result, Option, or custom type (not a boolean)
 - Inside a match arm: 2+ nested `case` expressions checking boolean values
 - Each boolean case has True/False branches returning different values
 - Nesting depth >= 2 levels
 
 **When to extract:**
+
 - 2+ sequential boolean checks in the same arm
 - The checks are independent (order doesn't matter for correctness)
 - Extraction improves readability and testability
@@ -301,27 +305,27 @@ These are hard boundaries. Do not modify:
 4. **Test files** — Don't reduce test coverage or assertions for aesthetics. Only simplify test setup code if it's clearly redundant.
 5. **Code not recently modified** — Unless the user explicitly asks you to review a specific file or module, stay scoped to recent changes.
 6. **Type annotations** — Gleam infers types. Don't add or remove type annotations unless they genuinely improve readability of a complex function signature.
-7. **Comments that explain non-obvious logic** — Only remove comments that literally restate the code. Keep comments that explain *why*, not *what*.
+7. **Comments that explain non-obvious logic** — Only remove comments that literally restate the code. Keep comments that explain _why_, not _what_.
 
 ## Anti-Patterns to Detect
 
 Flag and fix these when found in recently modified code:
 
-| Anti-Pattern | Fix |
-|---|---|
-| Nested `case` on `Result` (2+ levels) | Flatten with `use` + `result.try` |
-| `case option { Some(x) -> Some(f(x)) None -> None }` | `option.map(option, f)` |
-| `case option { Some(x) -> x None -> default }` | `option.unwrap(option, default)` |
-| `case result { Ok(x) -> x Error(_) -> default }` | `result.unwrap(result, default)` |
-| `let x = y` where x is only used once immediately after | Inline `y` directly |
-| Long function (40+ lines) with mixed concerns | Extract focused helpers |
-| Duplicated match arms with identical bodies | Consolidate with `\|` |
-| `string.concat([a, b, c])` for simple joins | `a <> b <> c` |
-| `list.map(xs, fn(x) { x.field })` | `list.map(xs, fn(x) { x.field })` — only simplify if a named accessor exists |
-| `decode.then(fn(x) { decode.success(f(x)) })` | `decode.map(f)` |
-| `field: field` in constructors | `field:` shorthand |
-| Nested `case` for validation checks (2+ boolean checks) | Extract function with `use <- bool.guard(...)` |
-| Nested `case` on booleans inside pattern match | Extract helper using guard chains |
+| Anti-Pattern                                            | Fix                                                                          |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Nested `case` on `Result` (2+ levels)                   | Flatten with `use` + `result.try`                                            |
+| `case option { Some(x) -> Some(f(x)) None -> None }`    | `option.map(option, f)`                                                      |
+| `case option { Some(x) -> x None -> default }`          | `option.unwrap(option, default)`                                             |
+| `case result { Ok(x) -> x Error(_) -> default }`        | `result.unwrap(result, default)`                                             |
+| `let x = y` where x is only used once immediately after | Inline `y` directly                                                          |
+| Long function (40+ lines) with mixed concerns           | Extract focused helpers                                                      |
+| Duplicated match arms with identical bodies             | Consolidate with `\|`                                                        |
+| `string.concat([a, b, c])` for simple joins             | `a <> b <> c`                                                                |
+| `list.map(xs, fn(x) { x.field })`                       | `list.map(xs, fn(x) { x.field })` — only simplify if a named accessor exists |
+| `decode.then(fn(x) { decode.success(f(x)) })`           | `decode.map(f)`                                                              |
+| `field: field` in constructors                          | `field:` shorthand                                                           |
+| Nested `case` for validation checks (2+ boolean checks) | Extract function with `use <- bool.guard(...)`                               |
+| Nested `case` on booleans inside pattern match          | Extract helper using guard chains                                            |
 
 ## Refinement Process
 

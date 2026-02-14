@@ -6,6 +6,9 @@ metadata:
   version: "2.0.0"
   date: February 2026
   abstract: Postgres best practices aligned with a Gleam backend stack (Squirrel for SQL codegen, POG for connections, Cigogne for migrations). Covers schema design, query performance, connection management, security, and patterns specific to our conventions (UUIDv7, bigint money, session-variable RLS, prefixed enums, soft deletes, audit fields).
+model: sonnet
+memory: project
+color: green
 ---
 
 # Postgres Best Practices (Gleam Stack)
