@@ -27,10 +27,15 @@ reference, then load detailed docs.
     ├─ Case expressions, pattern matching       → fundamentals/case-patterns.md
     ├─ Label shorthand, let assert, pipelines   → fundamentals/language-features.md
     ├─ Useful stdlib functions                  → fundamentals/stdlib.md
+    ├─ Module name mistakes (regexp/regex)      → fundamentals/stdlib-module-names.md
+    ├─ String character filtering (no \0)       → fundamentals/string-character-filtering.md
     ├─ JSON decoding/encoding                   → fundamentals/decoding.md
+    ├─ decode.map vs decode.then                → fundamentals/decode-map-vs-then.md
     ├─ Opaque types, module design              → fundamentals/type-design.md
     ├─ Error discipline, AppError patterns      → fundamentals/error-handling.md
     ├─ use/result.try, helpers                  → fundamentals/code-patterns.md
+    ├─ Helper-first refactoring                 → fundamentals/helper-first-refactoring.md
+    ├─ Higher-order SQL helpers                 → fundamentals/higher-order-sql-helpers.md
     ├─ Tooling (gleam check, format, LSP)       → fundamentals/tooling.md
     ├─ Input validation (valid)                 → fundamentals/validation-valid.md
     ├─ Parser combinators (nibble)              → fundamentals/parsing-nibble.md
@@ -41,6 +46,9 @@ reference, then load detailed docs.
     Backend (Erlang target)?
     ├─ Web framework (wisp)                     → backend/wisp-framework.md
     ├─ HTTP server (mist)                       → backend/mist-server.md
+    ├─ HTTP logging (single middleware)         → backend/http-logging-middleware.md
+    ├─ DB error handling (3-tier)               → backend/three-tier-error-handling.md
+    ├─ Decoder defaults anti-pattern            → backend/decoder-defaults-anti-pattern.md
     ├─ OTP actors (basics, state, messages)     → backend/otp.md
     ├─ OTP supervision (trees, strategies)      → backend/otp-supervision.md
     ├─ OTP advanced (selectors, timers, ETS)    → backend/otp-advanced.md
@@ -84,8 +92,13 @@ reference, then load detailed docs.
 | Error handling | `references/fundamentals/error-handling.md` |
 | Type design | `references/fundamentals/type-design.md` |
 | Stdlib & data processing | `references/fundamentals/stdlib.md` |
+| Stdlib module names | `references/fundamentals/stdlib-module-names.md` |
 | JSON decoding | `references/fundamentals/decoding.md` |
+| decode.map vs decode.then | `references/fundamentals/decode-map-vs-then.md` |
 | Code patterns | `references/fundamentals/code-patterns.md` |
+| Helper-first refactoring | `references/fundamentals/helper-first-refactoring.md` |
+| Higher-order SQL helpers | `references/fundamentals/higher-order-sql-helpers.md` |
+| String character filtering | `references/fundamentals/string-character-filtering.md` |
 | Common pitfalls | `references/fundamentals/common-pitfalls.md` |
 | Tooling | `references/fundamentals/tooling.md` |
 | Input validation (valid) | `references/fundamentals/validation-valid.md` |
@@ -96,6 +109,8 @@ reference, then load detailed docs.
 |-------|-----------|
 | Web framework (wisp) | `references/backend/wisp-framework.md` |
 | HTTP server (mist) | `references/backend/mist-server.md` |
+| HTTP logging middleware | `references/backend/http-logging-middleware.md` |
+| Three-tier error handling | `references/backend/three-tier-error-handling.md` |
 | OTP actors & messages | `references/backend/otp.md` |
 | OTP supervision & strategies | `references/backend/otp-supervision.md` |
 | OTP advanced patterns | `references/backend/otp-advanced.md` |
@@ -107,6 +122,7 @@ reference, then load detailed docs.
 | JWT auth (ywt) | `references/backend/jwt-ywt.md` |
 | S3 object storage (bucket) | `references/backend/bucket-s3.md` |
 | Auth & time | `references/backend/auth.md` |
+| Decoder defaults anti-pattern | `references/backend/decoder-defaults-anti-pattern.md` |
 
 ### Frontend
 | Topic | Reference |

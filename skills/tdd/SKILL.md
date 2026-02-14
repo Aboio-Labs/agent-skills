@@ -395,6 +395,26 @@ When adding mocks or test utilities, read `testing-anti-patterns.md` to avoid co
 - Adding test-only methods to production classes
 - Mocking without understanding dependencies
 
+## Advanced TDD Patterns
+
+### Compile-Time Language Testing
+
+For compile-time languages like Gleam where you can't call non-existent functions, read `compile-time-language-testing.md` to learn how to write RED tests that compile but fail due to missing behavior:
+
+- Testing behavior (HTTP status codes) instead of function signatures
+- Using router integration tests for middleware testing
+- Writing tests that compile but fail in the RED phase
+
+### TDD Commit Structure
+
+To prove test-first discipline and create verifiable TDD workflow, read `red-green-commit-structure.md` for the commit pattern:
+
+- Commit 1 (RED): Failing tests only
+- Commit 2 (GREEN): Implementation that makes tests pass
+- Optional Commit 3 (REFACTOR): Cleanup while maintaining green
+
+This pattern creates an audit trail proving tests were written before implementation.
+
 ## Final Rule
 
 ```

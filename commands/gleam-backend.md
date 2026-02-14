@@ -87,6 +87,33 @@ Follow the patterns from the loaded references:
 - Add proper error variants to the project's error type
 - Never use `let _ =`. This is an anti-pattern
 
+**Security Checkpoint: Dynamic Table Names**
+
+If your SQL queries use dynamic table names (cannot be parameterized):
+1. ALWAYS validate against a compile-time allowlist before concatenation
+2. NEVER pass raw strings into SQL, even in test code
+3. Use panic for invalid table names (compile-time enforcement)
+
+```gleam
+// Example: RLS test helper
+const allowed_rls_tables = [
+  "orders", "products", "customers", "invoices"
+]
+
+fn validate_table_name(table: String) -> String {
+  case list.contains(allowed_rls_tables, table) {
+    True -> table
+    False -> panic as "Invalid table name: " <> table
+  }
+}
+
+// Use in SQL concatenation
+let table = validate_table_name(user_provided_table)
+let query = "SELECT * FROM tenant." <> table <> " WHERE id = $1"
+```
+
+This prevents SQL injection even in test-only code and establishes safe patterns.
+
 ### Step 6: Verify
 
 After implementation:
@@ -94,6 +121,66 @@ After implementation:
 1. Run `gleam check` to verify the code compiles
 2. Run `gleam format` to ensure consistent formatting
 3. If the project has tests, run `gleam test`
+
+**Testing Guidance: ValidationError HTTP Status**
+
+When writing tests for validation failures, remember:
+- `error.ValidationErr` → **400 Bad Request** (from centralized error handler)
+- `wisp.unprocessable_content()` → **422 Unprocessable Entity** (only for JSON decode errors)
+
+```gleam
+// Correct test expectations
+pub fn rejects_invalid_email_test() {
+  let req = simulate.post("/api/users", [], "{\"email\":\"not-an-email\"}")
+  let response = router.handle(req, ctx.db)
+
+  response.status |> should.equal(400)  // ValidationErr → 400
+}
+
+pub fn rejects_malformed_json_test() {
+  let req = simulate.post("/api/users", [], "{bad json")
+  let response = router.handle(req, ctx.db)
+
+  response.status |> should.equal(422)  // JSON decode error → 422
+}
+```
+
+### Step 7: Review Agent Cleanup
+
+After running review agents (code-simplifier, observability-master, etc.):
+
+1. Check which files were modified:
+   ```bash
+   git diff --name-only
+   ```
+
+2. Revert changes to files **outside** your feature scope:
+   ```bash
+   git checkout -- path/to/unrelated/file.gleam
+   ```
+
+3. Only commit changes directly related to your feature
+
+**Why this matters:** Review agents sometimes modify files outside the current task scope. These changes should be reverted before committing to keep the PR focused and reviewable.
+
+**Example:**
+```bash
+# Working on gleam-backend feature, code-simplifier modifies:
+# - src/backend/handler.gleam (your feature) ✓ keep
+# - src/frontend/component.gleam (unrelated) ✗ revert
+# - lib/validation.gleam (unrelated) ✗ revert
+
+git status
+# On branch feature/backend-endpoint
+# Changes not staged:
+#   modified: src/backend/handler.gleam
+#   modified: src/frontend/component.gleam
+#   modified: lib/validation.gleam
+
+git checkout -- src/frontend/component.gleam lib/validation.gleam
+git add src/backend/handler.gleam
+git commit -m "feat: add backend endpoint for orders"
+```
 
 ## Arguments
 
