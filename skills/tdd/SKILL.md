@@ -1,5 +1,5 @@
 ---
-name: test-driven-development
+name: tdd
 description: Use when implementing any feature or bugfix, before writing implementation code
 ---
 
@@ -81,19 +81,20 @@ import gleeunit/should
 import myapp/retry
 
 pub fn retries_failed_operations_3_times_test() {
-  let operation = fn(state) {
-    let attempts = state + 1
-    case attempts < 3 {
-      True -> Error(#(attempts, "fail"))
-      False -> Ok(#(attempts, "success"))
-    }
-  }
-
-  retry.retry_operation(operation, 0)
-  |> should.be_ok
-  |> should.equal(#(3, "success"))
+let operation = fn(state) {
+let attempts = state + 1
+case attempts < 3 {
+True -> Error(#(attempts, "fail"))
+False -> Ok(#(attempts, "success"))
 }
-```
+}
+
+retry.retry_operation(operation, 0)
+|> should.be_ok
+|> should.equal(#(3, "success"))
+}
+
+````
 Clear name, tests real behavior, one thing
 </Good>
 
@@ -104,7 +105,8 @@ pub fn retry_works_test() {
   retry.retry_operation(some_mock_fn, 0)
   |> should.be_ok
 }
-```
+````
+
 Vague name, doesn't show what behavior is tested
 </Bad>
 
@@ -145,19 +147,20 @@ pub fn retry_operation(
   do_retry(operation, initial_state, 0)
 }
 
-fn do_retry(
-  operation: fn(a) -> Result(#(a, b), #(a, String)),
-  state: a,
-  attempt: Int,
+fn do*retry(
+operation: fn(a) -> Result(#(a, b), #(a, String)),
+state: a,
+attempt: Int,
 ) -> Result(#(a, b), #(a, String)) {
-  case operation(state) {
-    Ok(result) -> Ok(result)
-    Error(#(new_state, _)) if attempt < 2 ->
-      do_retry(operation, new_state, attempt + 1)
-    Error(e) -> Error(e)
-  }
+case operation(state) {
+Ok(result) -> Ok(result)
+Error(#(new_state,*)) if attempt < 2 ->
+do_retry(operation, new_state, attempt + 1)
+Error(e) -> Error(e)
 }
-```
+}
+
+````
 Just enough to pass
 </Good>
 
@@ -171,7 +174,8 @@ pub fn retry_operation(
   // Configurable max retries, backoff strategies, callbacks...
   // Over-engineered
 }
-```
+````
+
 Over-engineered
 </Bad>
 
@@ -211,11 +215,11 @@ Next failing test for next feature.
 
 ## Good Tests
 
-| Quality          | Good                                         | Bad                                                   |
-| ---------------- | -------------------------------------------- | ----------------------------------------------------- |
-| **Minimal**      | One thing. "and" in name? Split it.          | `pub fn validates_email_and_domain_and_whitespace()` |
-| **Clear**        | Name describes behavior                      | `pub fn test1_test()`                                 |
-| **Shows intent** | Demonstrates desired API                     | Obscures what code should do                          |
+| Quality          | Good                                | Bad                                                  |
+| ---------------- | ----------------------------------- | ---------------------------------------------------- |
+| **Minimal**      | One thing. "and" in name? Split it. | `pub fn validates_email_and_domain_and_whitespace()` |
+| **Clear**        | Name describes behavior             | `pub fn test1_test()`                                |
+| **Shows intent** | Demonstrates desired API            | Obscures what code should do                         |
 
 ## Why Order Matters
 

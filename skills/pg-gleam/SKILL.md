@@ -1,5 +1,5 @@
 ---
-name: pg
+name: pg-gleam
 description: Postgres performance optimization and best practices for a Gleam + Squirrel + POG + Cigogne stack. Use this skill when writing, reviewing, or optimizing Postgres queries, schema designs, or database configurations.
 license: MIT
 metadata:
@@ -14,13 +14,13 @@ Performance optimization and schema design guide for Postgres, aligned with our 
 
 ## Stack Context
 
-| Layer | Tool | Role |
-|-------|------|------|
-| Language | Gleam | Backend application code |
-| SQL codegen | Squirrel | Generates type-safe Gleam from `.sql` files |
-| DB driver | POG | Connection pooling, binary protocol |
-| Migrations | Cigogne | Schema migrations |
-| Extensions | pg_uuidv7 | UUIDv7 primary key generation |
+| Layer       | Tool      | Role                                        |
+| ----------- | --------- | ------------------------------------------- |
+| Language    | Gleam     | Backend application code                    |
+| SQL codegen | Squirrel  | Generates type-safe Gleam from `.sql` files |
+| DB driver   | POG       | Connection pooling, binary protocol         |
+| Migrations  | Cigogne   | Schema migrations                           |
+| Extensions  | pg_uuidv7 | UUIDv7 primary key generation               |
 
 ## Our Conventions
 
@@ -37,19 +37,19 @@ Performance optimization and schema design guide for Postgres, aligned with our 
 
 ## Gleam Type Mapping (via Squirrel/POG)
 
-| Postgres Type | Gleam Type | Notes |
-|---------------|------------|-------|
-| `uuid` | `String` | UUIDv7 for PKs |
-| `text` | `String` | Prefer over `varchar(n)` |
-| `boolean` | `Bool` | |
-| `integer` | `Int` | |
-| `bigint` | `Int` | Use for money (exact) |
-| `numeric` | `Float` | **Lossy!** Avoid for money |
-| `timestamp` | `pog.Timestamp` | No `timestamptz` support |
-| `date` | `pog.Date` | |
-| `jsonb` | `String` (raw JSON) | Decode in Gleam |
-| `bytea` | `BitArray` | |
-| `enum` | Generated variant type | See `schema-enums.md` |
+| Postgres Type | Gleam Type             | Notes                      |
+| ------------- | ---------------------- | -------------------------- |
+| `uuid`        | `String`               | UUIDv7 for PKs             |
+| `text`        | `String`               | Prefer over `varchar(n)`   |
+| `boolean`     | `Bool`                 |                            |
+| `integer`     | `Int`                  |                            |
+| `bigint`      | `Int`                  | Use for money (exact)      |
+| `numeric`     | `Float`                | **Lossy!** Avoid for money |
+| `timestamp`   | `pog.Timestamp`        | No `timestamptz` support   |
+| `date`        | `pog.Date`             |                            |
+| `jsonb`       | `String` (raw JSON)    | Decode in Gleam            |
+| `bytea`       | `BitArray`             |                            |
+| `enum`        | Generated variant type | See `schema-enums.md`      |
 
 ## When to Apply
 
@@ -65,16 +65,16 @@ Reference these guidelines when:
 
 ## Rule Categories by Priority
 
-| Priority | Category | Impact | Prefix |
-|----------|----------|--------|--------|
-| 1 | Query Performance | CRITICAL | `query-` |
-| 2 | Connection Management | CRITICAL | `conn-` |
-| 3 | Security & RLS | CRITICAL | `security-` |
-| 4 | Schema Design | HIGH | `schema-` |
-| 5 | Concurrency & Locking | MEDIUM-HIGH | `lock-` |
-| 6 | Data Access Patterns | MEDIUM | `data-` |
-| 7 | Monitoring & Diagnostics | LOW-MEDIUM | `monitor-` |
-| 8 | Advanced Features | LOW | `advanced-` |
+| Priority | Category                 | Impact      | Prefix      |
+| -------- | ------------------------ | ----------- | ----------- |
+| 1        | Query Performance        | CRITICAL    | `query-`    |
+| 2        | Connection Management    | CRITICAL    | `conn-`     |
+| 3        | Security & RLS           | CRITICAL    | `security-` |
+| 4        | Schema Design            | HIGH        | `schema-`   |
+| 5        | Concurrency & Locking    | MEDIUM-HIGH | `lock-`     |
+| 6        | Data Access Patterns     | MEDIUM      | `data-`     |
+| 7        | Monitoring & Diagnostics | LOW-MEDIUM  | `monitor-`  |
+| 8        | Advanced Features        | LOW         | `advanced-` |
 
 ## How to Use
 
