@@ -75,12 +75,12 @@ For known critical files (routers, configs, startup), use targeted Grep queries 
 
 ```bash
 # DO: Check specific concerns
-Grep "process.sleep_forever" src/kafka.gleam        # Verify VM stays alive
+Grep "process.sleep_forever" src/server.gleam        # Verify VM stays alive
 Grep "supervisor.add" src/kafka.gleam               # Check supervised actors
 Grep "pog.transaction" src/                         # Find transaction nesting
 
 # DON'T: Read full critical files every time
-Read src/kafka.gleam                                # 200 lines when checking 1 pattern
+Read src/server.gleam                                # 200 lines when checking 1 pattern
 Read gleam.toml                                     # 50 lines when checking 1 dependency
 ```
 
@@ -88,13 +88,13 @@ Read gleam.toml                                     # 50 lines when checking 1 d
 
 ## Token Budget Examples
 
-| Task | Inefficient Approach | Efficient Approach | Savings |
-|------|--------------------|--------------------|---------|
-| Find unlogged errors | Read 10 handlers (50k tokens) | Grep `Error` + read ranges (3k tokens) | **94%** |
-| Audit OTP actors | Read all actor files (30k tokens) | Grep patterns + targeted reads (4k tokens) | **87%** |
-| Review SQL safety | Read all .sql files (20k tokens) | Grep `$` params + read ranges (2k tokens) | **90%** |
-| Simplify code | Read all changed files fully (40k tokens) | git diff + targeted reads (5k tokens) | **88%** |
-| Check RLS policies | Read all migrations (25k tokens) | Grep `POLICY\|RLS\|FORCE` (1k tokens) | **96%** |
+| Task                 | Inefficient Approach                      | Efficient Approach                         | Savings |
+| -------------------- | ----------------------------------------- | ------------------------------------------ | ------- |
+| Find unlogged errors | Read 10 handlers (50k tokens)             | Grep `Error` + read ranges (3k tokens)     | **94%** |
+| Audit OTP actors     | Read all actor files (30k tokens)         | Grep patterns + targeted reads (4k tokens) | **87%** |
+| Review SQL safety    | Read all .sql files (20k tokens)          | Grep `$` params + read ranges (2k tokens)  | **90%** |
+| Simplify code        | Read all changed files fully (40k tokens) | git diff + targeted reads (5k tokens)      | **88%** |
+| Check RLS policies   | Read all migrations (25k tokens)          | Grep `POLICY\|RLS\|FORCE` (1k tokens)      | **96%** |
 
 ## Anti-Patterns
 
