@@ -169,6 +169,52 @@ use <- bool.guard(subscribers.size(connections) != 0, continue(state))
 stop_actor(state)
 ```
 
+## Extracting Nested Boolean Checks
+
+When you have multiple boolean checks nested inside a pattern match arm, extract them into a helper function using `bool.guard`:
+
+```gleam
+// BEFORE - Hard to read, deeply nested
+case validate_input(data) {
+  Ok(parsed) -> {
+    case check_permission(user, parsed) {
+      True -> {
+        case is_within_quota(user) {
+          True -> process(parsed)
+          False -> Error("Quota exceeded")
+        }
+      }
+      False -> Error("Permission denied")
+    }
+  }
+  Error(e) -> Error(e)
+}
+
+// AFTER - Clear preconditions, flat structure
+case validate_input(data) {
+  Ok(parsed) -> process_with_checks(user, parsed)
+  Error(e) -> Error(e)
+}
+
+fn process_with_checks(user: User, parsed: Input) -> Result(Output, String) {
+  use <- bool.guard(!check_permission(user, parsed), Error("Permission denied"))
+  use <- bool.guard(!is_within_quota(user), Error("Quota exceeded"))
+  Ok(process(parsed))
+}
+```
+
+**Benefits:**
+- Flattens deeply nested structure into linear flow
+- Each guard represents a clear precondition
+- Function name documents the purpose of grouped checks
+- Easier to test validation logic in isolation
+- Follows "parse, don't validate" principle when used with opaque types
+
+**When to keep `case` instead:**
+- Only one boolean check (extraction adds unnecessary indirection)
+- Boolean checks have side effects that must execute in specific order
+- Matching on specific values, not True/False (see section above)
+
 ## Record Constructors as Functions
 
 Record constructors are functions. Use them directly:

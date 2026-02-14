@@ -69,7 +69,7 @@ Organize the review into these categories:
 
 1. **Type Design** — opaque types, parse-don't-validate, phantom types
 2. **Error Handling** — Result usage, error propagation, `let assert` usage
-3. **Code Patterns** — use expressions, pipelines, label usage, dead code
+3. **Code Patterns** — use expressions, pipelines, label usage, dead code, nested boolean cases
 4. **Common Pitfalls** — string building, list prepend vs append, imports, naming
 5. **Logging** — correct log levels (error vs warning vs info), `configure_logger` called at startup, no sensitive data in log messages, using structured context not string interpolation
 6. **Validation** — typed errors not plain strings, separate input/output types (parse don't validate), `all` for multiple rules on one field, `then` for dependent validations, `optional` for nullable fields
@@ -81,6 +81,14 @@ For each finding, include:
 - What the issue is
 - What the best practice recommends
 - A suggested fix (code snippet)
+
+**Special detection: Nested boolean cases**
+
+When reviewing code patterns, specifically check for:
+- Nested `case` expressions (2+ levels) where inner cases match on `True`/`False`
+- These patterns inside Result/Option match arms
+- Report: location, nesting depth, and suggest extracting to function with `bool.guard`
+- Categorize as **suggestion** severity (not error/warning)
 
 End with a summary: total issues found, grouped by severity (error, warning, suggestion).
 

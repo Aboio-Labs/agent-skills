@@ -169,6 +169,49 @@ use <- bool.guard(!check_digits(input), Error("Not digits"))
 Ok(input)
 ```
 
+#### Nested Boolean Checks After Pattern Match
+
+When boolean checks appear inside other pattern matches, extract them into a helper function:
+
+```gleam
+// BEFORE: Nested boolean pyramid after pattern match
+case fetch_user(id) {
+  Ok(user) -> {
+    case user.is_verified {
+      True -> case user.is_active {
+        True -> show_dashboard(user)
+        False -> Error("Account inactive")
+      }
+      False -> Error("Account not verified")
+    }
+  }
+  Error(e) -> Error(e)
+}
+
+// AFTER: Extracted function with guards
+case fetch_user(id) {
+  Ok(user) -> validate_user_access(user)
+  Error(e) -> Error(e)
+}
+
+fn validate_user_access(user: User) -> Result(Page, String) {
+  use <- bool.guard(!user.is_verified, Error("Account not verified"))
+  use <- bool.guard(!user.is_active, Error("Account inactive"))
+  Ok(show_dashboard(user))
+}
+```
+
+**Detection criteria:**
+- Outer `case` matches on Result, Option, or custom type (not a boolean)
+- Inside a match arm: 2+ nested `case` expressions checking boolean values
+- Each boolean case has True/False branches returning different values
+- Nesting depth >= 2 levels
+
+**When to extract:**
+- 2+ sequential boolean checks in the same arm
+- The checks are independent (order doesn't matter for correctness)
+- Extraction improves readability and testability
+
 ### 11. Simplify Decoder Pipelines
 
 When mapping a successful decode directly to another value, use `decode.map` instead of `decode.then` + `decode.success`.
@@ -258,7 +301,8 @@ Flag and fix these when found in recently modified code:
 | `list.map(xs, fn(x) { x.field })` | `list.map(xs, fn(x) { x.field })` — only simplify if a named accessor exists |
 | `decode.then(fn(x) { decode.success(f(x)) })` | `decode.map(f)` |
 | `field: field` in constructors | `field:` shorthand |
-| Nested `case` for validation checks | `use <- bool.guard(...)` |
+| Nested `case` for validation checks (2+ boolean checks) | Extract function with `use <- bool.guard(...)` |
+| Nested `case` on booleans inside pattern match | Extract helper using guard chains |
 
 ## Refinement Process
 

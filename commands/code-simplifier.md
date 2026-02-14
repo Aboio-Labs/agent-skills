@@ -107,7 +107,36 @@ string_builder.from_string("Hello")
 "Hello, " <> name
 ```
 
-#### 7. Project-specific helpers
+#### 7. Nested boolean cases inside pattern match → Extract with guards
+```gleam
+// BEFORE
+case fetch_user(id) {
+  Ok(user) -> {
+    case user.is_verified {
+      True -> case user.is_active {
+        True -> show_dashboard(user)
+        False -> Error("Account inactive")
+      }
+      False -> Error("Account not verified")
+    }
+  }
+  Error(e) -> Error(e)
+}
+
+// AFTER
+case fetch_user(id) {
+  Ok(user) -> validate_user_access(user)
+  Error(e) -> Error(e)
+}
+
+fn validate_user_access(user: User) -> Result(Page, String) {
+  use <- bool.guard(!user.is_verified, Error("Account not verified"))
+  use <- bool.guard(!user.is_active, Error("Account inactive"))
+  Ok(show_dashboard(user))
+}
+```
+
+#### 8. Project-specific helpers
 Check if the project has helpers in `helper/` or `shared/` that replace manual patterns:
 - `helper/error/response.gleam` → `error_response.handle(err)`
 - `helper/http/params.gleam` → `get_page_params(req)`
