@@ -71,10 +71,12 @@ pub fn validates_email_format_test() {
 
 **MANDATORY - NEVER SKIP**
 
-Run the test and confirm:
+Run the test using the project test runner:
 ```bash
-cd server && gleam test
+./scripts/run-tests.sh
 ```
+
+The script saves clean output to `server/.tmp/tests/<timestamp>.txt`. **Read that file for details — do NOT re-run tests to extract different information.** Use `rg` on the saved file instead.
 
 Check that:
 - ✓ Test **fails** (not errors)
@@ -121,8 +123,10 @@ pub fn create(email: String, password: String) -> Result(User, Error) {
 
 Run the full test suite:
 ```bash
-cd server && gleam test
+./scripts/run-tests.sh
 ```
+
+The script saves output to `server/.tmp/tests/<timestamp>.txt`. Read the saved file for full details — never re-run to parse output differently.
 
 Confirm:
 - ✓ New test **passes**

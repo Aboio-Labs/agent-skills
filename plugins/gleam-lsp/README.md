@@ -132,4 +132,4 @@ gleam lsp
 - [Gleam Language Server Documentation](https://gleam.run/language-server/)
 - [Gleam Official Site](https://gleam.run/)
 - [Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
-- [Aboio Agent Skills Repository](https://github.com/aboio/agent-skills)
+- [Aboio Agent Skills Repository](https://github.com/aboio-labs/aboio-skills)
