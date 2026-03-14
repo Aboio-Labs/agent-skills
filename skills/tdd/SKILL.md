@@ -399,6 +399,10 @@ When adding mocks or test utilities, read `testing-anti-patterns.md` to avoid co
 - Adding test-only methods to production classes
 - Mocking without understanding dependencies
 
+## Lustre Frontend TDD
+
+When running TDD in a Lustre frontend codebase (client app, components), also load `/gleam:frontend-testing`. It enforces behavioral-only tests (model, update, interactions, ARIA) and documents simulate limitations. Without it, tests tend to drift into CSS class assertions that break on every visual refresh.
+
 ## Advanced TDD Patterns
 
 ### Compile-Time Language Testing
