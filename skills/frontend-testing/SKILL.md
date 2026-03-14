@@ -1,3 +1,8 @@
+---
+name: frontend-testing
+description: Lustre frontend testing — model, update, and behavior. No styling tests unless explicitly requested.
+---
+
 # Frontend Testing
 
 Lustre frontend testing — model, update, and behavior. No styling tests unless explicitly requested.
