@@ -117,3 +117,45 @@ fn update(model, msg) {
   }
 }
 ```
+
+## Staleness Guards for Search/Autocomplete
+
+When a user types fast, multiple requests fire and responses may arrive out of order. A slow response for "ab" can overwrite the correct result for "abc". Echo the query in the response message and compare against the current model.
+
+```gleam
+// Include the query that triggered this request in the message
+pub type Msg {
+  UserTypedSearch(String)
+  ServerReturnedResults(query: String, Result(List(Item), rsvp.Error))
+}
+
+fn search_effect(query: String, token: String) -> Effect(Msg) {
+  api.get(token, "/api/search?q=" <> uri.percent_encode(query),
+    rsvp.expect_json(items_decoder, fn(result) {
+      ServerReturnedResults(query:, result:)
+    }))
+}
+
+fn update(model, msg) {
+  case msg {
+    UserTypedSearch(text) ->
+      case string.length(text) >= 2 {
+        True -> #(Model(..model, search_query: text), search_effect(text, model.token))
+        False -> #(Model(..model, search_query: text, results: []), effect.none())
+      }
+
+    ServerReturnedResults(query:, result:) ->
+      // Discard stale responses — query has moved on
+      case query == model.search_query {
+        False -> #(model, effect.none())
+        True ->
+          case result {
+            Ok(items) -> #(Model(..model, results: items), effect.none())
+            Error(_) -> #(Model(..model, results: []), effect.none())
+          }
+      }
+  }
+}
+```
+
+**Refactoring warning:** When changing message shapes (e.g., removing the `query` field from `ServerReturnedResults`), verify that staleness guards are re-implemented another way. Silently dropping the guard causes stale responses to overwrite correct results — a subtle bug that doesn't crash.

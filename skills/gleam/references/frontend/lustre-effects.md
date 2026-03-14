@@ -150,6 +150,73 @@ fn update(model, msg) {
 | **Attributes** (`on_attribute_change`) | Parent -> Child | Direct parent to child | Configuration (value, disabled, variant) |
 | **Properties** (`on_property_change`) | Parent -> Child | Direct, any JSON value | Complex data (lists, objects) |
 
+## Polling Pattern
+
+Use `effect.from` + `timer.set_timeout` (FFI) to schedule periodic messages. Check the current route before fetching to stop polling naturally when the user navigates away — no explicit cleanup needed.
+
+```gleam
+fn poll_status(token: String) -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    set_timeout(fn() { dispatch(PollingTick) }, 3000)
+  })
+}
+
+fn update(model, msg) {
+  case msg {
+    PollingTick ->
+      // Stop polling when user leaves the page
+      case model.route {
+        OrderDetail(id) ->
+          #(model, api.get(token, "/api/orders/" <> id,
+            rsvp.expect_json(order_decoder, ServerReturnedOrder)))
+        _ -> #(model, effect.none())  // Navigated away — polling stops
+      }
+
+    ServerReturnedOrder(Ok(order)) ->
+      case order.status {
+        Pending ->
+          // Still pending — schedule another poll
+          #(Model(..model, order: Some(order)),
+            poll_status(model.token))
+        _ ->
+          // Terminal state — stop polling
+          #(Model(..model, order: Some(order)), effect.none())
+      }
+
+    ServerReturnedOrder(Error(_)) ->
+      #(model, effect.none())  // Stop polling on error
+  }
+}
+```
+
+## Fire-and-Forget Effects
+
+Lustre effects must return a message — you cannot return `Nil` from `effect.from`. For operations where you don't care about the result (e.g., logout, analytics), accept an `on_done` callback that dispatches a no-op message.
+
+```gleam
+pub type Msg {
+  UserClickedLogout
+  ServerCompletedLogout  // No-op — just satisfies the effect contract
+}
+
+fn logout_effect(token: String, on_done: fn() -> Msg) -> Effect(Msg) {
+  effect.from(fn(dispatch) {
+    // Fire the request, dispatch no-op when done
+    let _ = post_logout(token)
+    dispatch(on_done())
+  })
+}
+
+fn update(model, msg) {
+  case msg {
+    UserClickedLogout ->
+      #(model, logout_effect(model.token, fn() { ServerCompletedLogout }))
+    ServerCompletedLogout ->
+      #(model, modem.push("/login"))
+  }
+}
+```
+
 ## Effect Libraries
 
 - `rsvp`: HTTP requests

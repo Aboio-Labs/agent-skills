@@ -210,3 +210,83 @@ accordion.trigger([
 accordion.trigger([], [html.text("Toggle")])
 // The component internally sets role, aria-expanded, aria-controls, aria-selected
 ```
+
+## 13. event.debounce on Controlled Inputs
+
+`event.debounce` wrapping `on_input` on a controlled input delays the model update. During the delay, the VDOM still holds the stale value, and the diff resets the DOM input to match — causing typed characters to vanish.
+
+```gleam
+// DON'T: debounce a controlled input's on_input
+html.input([
+  attribute.value(model.query),
+  event.debounce(event.on_input(UserTypedSearch), 300),
+  // User types "abc" → model still "" after 0ms → VDOM diff resets input to ""
+])
+
+// DO: guard in update instead
+html.input([
+  attribute.value(model.query),
+  event.on_input(UserTypedSearch),
+])
+
+fn update(model, msg) {
+  case msg {
+    UserTypedSearch(text) ->
+      case string.length(text) >= 2 {
+        True -> #(Model(..model, query: text), search_effect(text))
+        False -> #(Model(..model, query: text), effect.none())
+      }
+  }
+}
+```
+
+## 14. Blur vs Click Race in Dropdowns
+
+`on("blur")` fires before `on_click` (event order: mousedown → blur → mouseup → click). In combobox/autocomplete dropdowns, blur closes the dropdown before the click on a result item registers.
+
+```gleam
+// DON'T: use on_click on dropdown items with blur-to-close
+html.button([event.on_click(UserSelectedResult(item))], [...])
+
+// DO: use mousedown + prevent_default (keeps focus on input, no blur fires)
+html.button([
+  event.on("mousedown", {
+    use <- decode.success
+    UserSelectedResult(item)
+  }) |> event.prevent_default,
+], [...])
+```
+
+## 15. FFI File Naming Collision
+
+Gleam compiles `foo.gleam` → `foo.mjs` in the build output. If you create a native JS FFI file with the same base name (e.g., `date_ffi.mjs` alongside `date_ffi.gleam`), the build output collides.
+
+```gleam
+// DON'T: name FFI file same as Gleam module
+// date_ffi.gleam + date_ffi.mjs → collision in build/
+
+// DO: suffix native JS files with _js
+// date_ffi.gleam + date_ffi_js.mjs → no collision
+@external(javascript, "./date_ffi_js.mjs", "formatDate")
+pub fn format_date(iso: String) -> String
+```
+
+## 16. CSS Class Construction from Server Data
+
+Never interpolate server-provided values into CSS class names. An attacker can inject arbitrary classes.
+
+```gleam
+// DON'T: interpolate server value
+fn status_class(status: String) -> String {
+  "badge--" <> status  // If status = "x onclick=alert(1)", classes are corrupted
+}
+
+// DO: closed case with hardcoded literals
+fn status_class(status: OrderStatus) -> String {
+  case status {
+    Pending -> "badge--pending"
+    Shipped -> "badge--shipped"
+    Delivered -> "badge--delivered"
+  }
+}
+```
