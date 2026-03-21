@@ -186,6 +186,46 @@ pub fn list_orders_by_date_range(
 - Use `::cast` only when Parrot needs disambiguation (e.g., `sqlc.arg(state)::tenant.customer_state` for custom enum types)
 - `sqlc.arg(start_date)::date` and `sqlc.arg(end_date)::date` — required when multiple bare `$n` params would generate duplicate Gleam labels
 
+### `sqlc.narg()` — Nullable Parameters
+
+`sqlc.narg(name)` forces a parameter to be nullable regardless of the column's `NOT NULL` constraint. Parrot generates `Option(T)` instead of `T`. There is no `@` shorthand for `sqlc.narg()`.
+
+**Primary use case: partial updates on NOT NULL columns.** Without `sqlc.narg()`, Parrot infers non-nullable types from `NOT NULL` columns, making `COALESCE($n, column)` dead code — the parameter can never be NULL.
+
+```sql
+-- name: UpdateAuthor :one
+UPDATE author
+SET
+  -- sqlc.narg → Option(String), caller passes None to keep existing
+  name = COALESCE(sqlc.narg('name'), name),
+  bio = COALESCE(sqlc.narg('bio'), bio)
+WHERE id = sqlc.arg('id')
+RETURNING *;
+```
+
+Generates:
+```gleam
+pub fn update_author(
+  name name: Option(String),    // None = keep existing
+  bio bio: Option(String),      // None = keep existing
+  id id: BitArray,
+) { ... }
+```
+
+**When to use `sqlc.narg()` vs bare `$n`:**
+
+| Column constraint | SQL pattern | Without `sqlc.narg()` | With `sqlc.narg()` |
+|---|---|---|---|
+| `NOT NULL` | `COALESCE($n, column)` | `T` — COALESCE is dead code | `Option(T)` — partial update works |
+| nullable | `COALESCE($n, column)` | `Option(T)` — already works | `Option(T)` — same result, redundant |
+
+**Rule:** Use `sqlc.narg()` for every `COALESCE($n, column)` partial update on a `NOT NULL` column. For nullable columns, bare `$n` already generates `Option(T)`.
+
+**Enum casts with `sqlc.narg()`:** Combine with `::type` cast for enum parameters:
+```sql
+status = COALESCE(sqlc.narg(new_status)::tenant.fulfillment_item_status, status)
+```
+
 ## Enum Generation
 
 Parrot auto-generates enum types from PostgreSQL `CREATE TYPE ... AS ENUM`:
@@ -265,11 +305,34 @@ fn dynamic_option_to_bool(opt: Option(Dynamic)) -> Bool {
 
 **Detection:** Check generated `sql.gleam` for `Option(Dynamic)` fields after running Parrot.
 
-### 2. LEFT JOIN LATERAL Nullability
+### 2. LEFT JOIN LATERAL Nullability (sqlc Limitation)
 
-`LEFT JOIN LATERAL (... LIMIT 1) subq ON true` — Parrot cannot trace nullability through lateral subqueries. Non-optional Gleam types are generated, but runtime NULL causes decode panic.
+sqlc determines output column nullability **solely from the PostgreSQL schema's `NOT NULL` constraints**. It does **not** propagate nullability through LEFT/RIGHT JOINs. A `NOT NULL` column from a LEFT-JOINed table generates as non-nullable in Gleam, which crashes at runtime when the join produces no matching row.
 
-**Fix:** Wrap with `COALESCE(col, '')` for strings or `CASE WHEN col IS NOT NULL THEN col END` for UUIDs (produces `Option(Dynamic)`, decode at call site).
+This is a known sqlc limitation (issues #3240, #4117, #2632). There is no config override, no `sqlc.narg()` for output columns, and no annotation mechanism to force nullable output types.
+
+**Workarounds (in order of preference):**
+
+1. **`CASE WHEN col IS NOT NULL THEN col ELSE NULL END`** — Forces `Option(Dynamic)`. Truthful about nullability. Decode at call site. Use when the field should genuinely be optional.
+
+2. **`COALESCE(col, default)`** — Forces non-nullable type (`String`, `Int`, etc.). Masks NULL with a default value. Use only when an empty/zero default is semantically correct (see Gotcha #8).
+
+3. **Accept `String` and validate in application code** — If the business rule guarantees the row exists (e.g., every supplier must have a CPF/CNPJ), the `NOT NULL` type is correct and validation should happen before the query is called.
+
+```sql
+-- Option 1: CASE WHEN → Option(Dynamic), truthful
+LEFT JOIN LATERAL (
+    SELECT pd.document_value FROM tenant.person_document pd
+    WHERE pd.person_id = p.id AND pd.document_type IN ('cpf', 'cnpj')
+    LIMIT 1
+) dest_doc ON true
+-- In SELECT:
+CASE WHEN dest_doc.document_value IS NOT NULL
+     THEN dest_doc.document_value ELSE NULL END as dest_cpf_cnpj
+
+-- Option 2: COALESCE → String, masks NULL
+COALESCE(dest_doc.document_value, '') as dest_cpf_cnpj
+```
 
 ### 3. Bare `null` in SET Clauses
 
@@ -318,17 +381,31 @@ WHERE order_date >= $2 AND order_date <= $3
 WHERE order_date >= sqlc.arg(start_date)::date AND order_date <= sqlc.arg(end_date)::date
 ```
 
-### 8. COALESCE for Nullable Subquery Scalars
+### 8. Nullable Subquery Scalars — COALESCE vs CASE WHEN
 
-Scalar subqueries return NULL when no rows match. `COALESCE(subquery, '')` forces Parrot to generate `String` instead of `Option(String)`, simplifying view code.
+Scalar subqueries and LEFT JOIN column references return NULL when no rows match, but sqlc infers the type from the column's `NOT NULL` constraint — producing a non-nullable Gleam type that crashes at runtime.
+
+**Choose based on semantics:**
+
+| Pattern | Generated type | When to use |
+|---------|---------------|-------------|
+| `COALESCE(subquery, '')` | `String` | Default value is semantically correct (e.g., carrier name → `""` is fine) |
+| `CASE WHEN x IS NOT NULL THEN x ELSE NULL END` | `Option(Dynamic)` | NULL is meaningful and should be handled explicitly (e.g., missing CPF/CNPJ → validation error) |
+| Bare column from LEFT JOIN | `String` (WRONG) | **Never** — crashes at runtime when join has no match |
 
 ```sql
--- Parrot generates String (not Option(String))
+-- COALESCE: masks NULL with default, generates String
 SELECT COALESCE((SELECT name FROM tenant.carrier WHERE id = o.carrier_id), '') AS carrier_name
 FROM tenant.order o WHERE o.id = $1;
+
+-- CASE WHEN: preserves NULL, generates Option(Dynamic) — decode at call site
+SELECT CASE WHEN dest_doc.document_value IS NOT NULL
+            THEN dest_doc.document_value ELSE NULL END as dest_cpf_cnpj
+FROM ...
+LEFT JOIN LATERAL (...) dest_doc ON true;
 ```
 
-**Important:** This is approved for subquery scalars only. Do NOT use `COALESCE(uuid_col::text, '')` — that pattern is forbidden.
+**Important:** Neither pattern should be used on direct UUID columns. Do NOT use `COALESCE(uuid_col::text, '')` — that pattern is forbidden.
 
 ### 9. `:one` Does Not Mean "At Most One Row"
 
@@ -374,7 +451,7 @@ date.parse(s) |> result.map(fn(d) { Some(date.to_calendar_date(d)) })
 4. **Prefix enum values** — same rule as Squirrel (`os_pending`, `ps_paid`)
 5. **Never edit generated `sql.gleam`** — fix SQL source, re-run Parrot
 6. **No `::text` on UUIDs** — Parrot decodes UUIDs as `BitArray` natively
-7. **COALESCE only for** subquery scalar defaults and aggregate defaults
+7. **COALESCE only for** aggregate defaults, partial updates, and subquery scalar defaults where empty/zero is semantically correct. Use `CASE WHEN ... ELSE NULL END` when NULL is meaningful
 8. **Mark unsupported patterns** with `-- SQLC-SKIP: reason` comments
 9. **One `sql/` directory per domain** — Parrot generates one `sql.gleam` per directory
 10. **Always commit `.sql` and `sql.gleam` together** — stale generated code causes silent bugs
