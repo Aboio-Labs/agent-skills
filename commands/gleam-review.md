@@ -101,6 +101,8 @@ Scan for violations in each category using targeted Grep patterns. Run these che
 - `list.range` — deprecated, use `int.range`
 - `===` — JavaScript habit, use `==`
 - `Option` for fallible operations — use `Result(a, Nil)`
+- `decode.optional_field(name, default, decode.string)` — crashes on `null`; use `Option(T)` in shared type + `decode.optional(decode.string)`, unwrap in client view
+- `decode.optional(inner) |> decode.map(option.unwrap(_, default))` in shared decoders — COALESCE-at-the-decoder; shared types must reflect server nullability with `Option(T)`
 
 **§5 Conventions (from conventions.md C1-C10):**
 - `import .* \.{` with functions/constants imported unqualified (C1)
