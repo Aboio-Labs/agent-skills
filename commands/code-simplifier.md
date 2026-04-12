@@ -90,17 +90,25 @@ fn sum(list: List(Int), acc: Int) -> Int {
 list.fold(list, 0, fn(acc, x) { acc + x })
 ```
 
-#### 5. Case on bools → if/else or guards
+#### 5. Case on bools → `bool.guard` chains
 ```gleam
-// BEFORE
+// BEFORE — nested boolean checks
 case is_valid {
-  True -> "yes"
-  False -> "no"
+  False -> Error("Invalid")
+  True -> case is_active {
+    False -> Error("Inactive")
+    True -> Ok(process())
+  }
 }
 
-// AFTER
-if is_valid { "yes" } else { "no" }
+// AFTER — flat guard chain
+use <- bool.guard(!is_valid, Error("Invalid"))
+use <- bool.guard(!is_active, Error("Inactive"))
+Ok(process())
 ```
+
+**Note:** Gleam has no `if/else` expression. All boolean logic uses
+`case` or `bool.guard`. Do not suggest `if/else` syntax.
 
 #### 6. Unnecessary string building → direct concatenation
 ```gleam
