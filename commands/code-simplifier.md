@@ -18,15 +18,18 @@ The user invoked this command with: $ARGUMENTS
 
 If `$ARGUMENTS` specifies a file or directory, use that. Otherwise:
 
-1. Run `git diff --name-only HEAD` to find recently modified `.gleam` files
-2. If no git changes, ask the user which files to simplify
+1. Find the base branch (usually `main`) and run `git diff --name-only main...HEAD -- '*.gleam'` to find files changed **on this branch only**
+2. If no branch commits yet, fall back to `git diff --name-only HEAD -- '*.gleam'` for uncommitted changes
+3. If no changes at all, ask the user which files to simplify
+
+**Scope rule:** Only touch files that appear in this diff. Do not simplify files outside the branch, even if `gleam format` or other tools modified them in the working tree.
 
 ### Step 2: Read the target code efficiently
 
 **Follow `references/token-efficiency.md` rules.** Do NOT read entire files. Instead:
 
-1. Run `git diff -U10` on each target file to see changes with context
-2. Use Grep to find simplification patterns (nested `case`, intermediate `let`, etc.)
+1. Run `git diff main...HEAD -U10 -- <file>` on each target file to see branch changes with context
+2. Use Grep to find simplification patterns (nested `case`, intermediate `let`, etc.) **only in files from Step 1**
 3. Read only specific line ranges around matches (offset+limit)
 
 ### Step 3: Analyze for simplification opportunities
@@ -196,4 +199,4 @@ End with summary:
 
 ## Focus
 
-Simplify **recently modified code only** unless explicitly told otherwise. This keeps simplification relevant to current work.
+Simplify **files changed on the current branch only** (`git diff --name-only main...HEAD`) unless the user explicitly passes a file/directory argument. Do not touch files outside this scope, even if they appear in `git status` due to formatting or unrelated edits.
