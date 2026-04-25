@@ -143,13 +143,20 @@ value
 
 When designing your own functions, put the "data" argument first to enable pipelining.
 
-## Constant Concatenation
+## Constant Expressions
 
 The `<>` operator works in constant expressions:
 
 ```gleam
 pub const greeting = "Hello"
 pub const sentence = greeting <> " " <> "Joe" <> "!"
+```
+
+List prepending works in constants using spread syntax:
+
+```gleam
+pub const base = [2, 3, 4]
+pub const extended = [1, ..base]
 ```
 
 ## Structural Equality

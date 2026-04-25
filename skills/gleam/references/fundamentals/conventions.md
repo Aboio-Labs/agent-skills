@@ -216,7 +216,10 @@ name = "thingy"
 version = "1.0.0"
 
 [dependencies]
-gleam_stdlib = "<= 1.0.0 and < 2.0.0"
+gleam_stdlib = ">= 1.0.0 and < 2.0.0"
+
+[javascript]
+source_maps = true
 
 [tools.lustre.dev]
 host = "0.0.0.0"

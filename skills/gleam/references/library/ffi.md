@@ -49,7 +49,7 @@ pub fn do_thing(arg: String) -> Result(Int, Nil)
 ## FFI Best Practices
 
 - **NEVER** name Erlang FFI modules the same as Gleam modules (causes infinite loops)
-- Use `.mjs` extension for JavaScript FFI files
+- Use `.mjs` extension for JavaScript FFI files (`.mts`, `.cts`, `.jsx`, `.tsx` also supported as native file extensions)
 - Elixir modules need `Elixir.` prefix: `@external(erlang, "Elixir.Module", "func")`
 - Write extensive tests for all FFI code
 - Wrap FFI in validation layers when possible

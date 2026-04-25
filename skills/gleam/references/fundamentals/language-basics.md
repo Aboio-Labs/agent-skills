@@ -44,11 +44,18 @@ Update records with spread syntax (creates a NEW record — Gleam is immutable):
 State(..state, field_name: new_value)
 ```
 
-**New in v1.14.0**: Record update syntax works in constant definitions:
+Record update syntax works in constant definitions:
 
 ```gleam
 pub const base_config = Config(host: "0.0.0.0", port: 8080)
 pub const prod_config = Config(..base_config, port: 80)
+```
+
+List prepending works in constants using spread syntax:
+
+```gleam
+pub const base = [2, 3, 4]
+pub const extended = [1, ..base]
 ```
 
 ## Result vs Option
